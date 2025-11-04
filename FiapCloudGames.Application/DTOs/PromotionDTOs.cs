@@ -10,16 +10,19 @@ public record PromotionResponse(
     bool IsActive
 );
 
-public record CreatePromotionRequest(
-    Guid GameId,
-    decimal DiscountPercentage,
-    DateTime StartDate,
-    DateTime EndDate
-);
+// record class com propriedades settable (melhor para model binding)
+                public record class CreatePromotionRequest
+                {
+                    public Guid GameId { get; init; }
+                    public decimal DiscountPercentage { get; init; }
+                    public DateTime StartDate { get; init; }
+                    public DateTime EndDate { get; init; }
+                }
 
-public record UpdatePromotionRequest(
-    decimal? DiscountPercentage,
-    DateTime? StartDate,
-    DateTime? EndDate,
-    bool? IsActive
-);
+                public record class UpdatePromotionRequest
+                {
+                    public decimal? DiscountPercentage { get; init; }
+                    public DateTime? StartDate { get; init; }
+                    public DateTime? EndDate { get; init; }
+                    public bool? IsActive { get; init; }
+                }

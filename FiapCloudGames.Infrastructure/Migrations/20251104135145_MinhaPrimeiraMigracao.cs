@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace FiapCloudGames.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AdicionarTabelaJogos : Migration
+    public partial class MinhaPrimeiraMigracao : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

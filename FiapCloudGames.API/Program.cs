@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using FiapCloudGames.API.Middleware;
 using FiapCloudGames.Application.Services;
@@ -11,11 +12,13 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger configuration
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -50,11 +53,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Database configuration
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Dependency Injection
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
@@ -62,7 +63,6 @@ builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<LibraryService>();
 builder.Services.AddScoped<PromotionService>();
 
-// JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("JWT Issuer not configured");
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? throw new InvalidOperationException("JWT Audience not configured");
@@ -79,16 +79,18 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
+        ValidateIssuerSigningKey = true,    
         ValidIssuer = jwtIssuer,
         ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        // mapeia corretamente os tipos de claim usados pelos [Authorize]/User.FindFirstValue
+        NameClaimType = ClaimTypes.NameIdentifier,
+        RoleClaimType = ClaimTypes.Role
     };
 });
 
 builder.Services.AddAuthorization();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -101,15 +103,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-// Habilita Swagger em qualquer ambiente
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "FIAP Cloud Games API v1");
-    c.RoutePrefix = "swagger"; // UI em /swagger
+    c.SwaggerEndpoint("swagger/v1/swagger.json", "FIAP Cloud Games API v1");
+    c.RoutePrefix = string.Empty; // UI em /
 });
 
 app.UseCors("AllowAll");
@@ -118,5 +118,32 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+    var adminUser = await uow.Users.FirstOrDefaultAsync(u => u.Email == "admin@fiap.com");
+    if (adminUser == null)
+    {
+        var admin = new FiapCloudGames.Domain.Entities.User
+        {
+            Id = Guid.NewGuid(),
+            Name = "Admin",
+            Email = "admin@fiap.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123@"),
+            Role = FiapCloudGames.Domain.Enums.UserRole.Admin,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        await uow.Users.AddAsync(admin);
+        await uow.SaveChangesAsync();
+    }
+    else if (adminUser.Role != FiapCloudGames.Domain.Enums.UserRole.Admin)
+    {
+        adminUser.Role = FiapCloudGames.Domain.Enums.UserRole.Admin;
+        adminUser.UpdatedAt = DateTime.UtcNow;
+        await uow.SaveChangesAsync();
+    }
+}
 
 app.Run();

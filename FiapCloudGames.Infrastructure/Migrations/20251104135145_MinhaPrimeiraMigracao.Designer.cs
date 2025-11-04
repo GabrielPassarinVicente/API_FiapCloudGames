@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FiapCloudGames.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251103121323_AdicionarTabelaJogos")]
-    partial class AdicionarTabelaJogos
+    [Migration("20251104135145_MinhaPrimeiraMigracao")]
+    partial class MinhaPrimeiraMigracao
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -8,6 +8,8 @@ public record UserGameResponse(
     decimal PurchasePrice
 );
 
-public record PurchaseGameRequest(
-    Guid GameId
-);
+// record class com propriedade settable
+public record class PurchaseGameRequest
+{
+    public Guid GameId { get; init; }
+}
